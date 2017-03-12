@@ -3,11 +3,11 @@ DEF WORLD WorldInfo {
   inkEvaporation 0.5
 }
 Viewpoint {
-  orientation 0.99336585 0.10267943 -0.051780445 5.0346833
-  position -0.38842172 3.3126531 1.7321666
+  orientation 0.98674908 0.022698621 -0.16065809 5.0176281
+  position -0.17247211 0.71921249 0.76783699
 }
 RectangleArena {
-  translation 0 -5e-05 0
+  translation 0 -5e-5 0
   floorSize 1.4 1.4
 }
 Background {
@@ -20,8 +20,10 @@ DEF ROBOT E-puck {
   controller "advanced_genetic_algorithm"
   emitter_channel 2
   groundSensorsSlot [
+    E-puckGroundSensors {
+    }
     DEF PEN_L Pen {
-      translation 2.1932798e-09 -0.0039999999 0.07
+      translation 2.1932798e-9 -0.0039999999 0.07
       rotation -0.57735027 0.57735027 0.57735027 2.0943951
       name "pen_l"
       inkColor 0 0.7 0

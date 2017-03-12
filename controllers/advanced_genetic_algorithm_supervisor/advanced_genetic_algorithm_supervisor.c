@@ -18,11 +18,11 @@ static bool walled_maze[12];
 static bool unwalled_maze[12];
 
 // must match the values in the advanced_genetic_algorithm.c code
-static const int NUM_SENSORS = 6;
+static const int NUM_SENSORS = 7;
 static const int NUM_WHEELS  = 3;
-static const double EXPLORATION_BONUS = 10;
-static const double TIME_PENALTY = 1;
-static const double EXPLORATION_PENALTY = 100; 
+static const double EXPLORATION_BONUS = 20;
+static const double TIME_PENALTY = 0.5;
+static const double EXPLORATION_PENALTY = 20; 
 #define GENOTYPE_SIZE (NUM_SENSORS * NUM_WHEELS)
 
 // index access
@@ -88,7 +88,7 @@ void check_exploration(void * is_finished) {
   } else {
     index_x = ceil(x);
   }
-  
+   
   
   if(z<0) {
     index_z = floor(z);

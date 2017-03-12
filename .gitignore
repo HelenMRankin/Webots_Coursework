@@ -1,4 +1,5 @@
 controllers/**/build/**
 controllers/**/*.exe
 **/.DS_Store
+*.exe
 
