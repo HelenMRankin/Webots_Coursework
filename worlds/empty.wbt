@@ -1,10 +1,10 @@
-#VRML_SIM V8.5 utf8
+#VRML_SIM V8.4.0 utf8
 DEF WORLD WorldInfo {
   inkEvaporation 0.5
 }
 Viewpoint {
-  orientation 0.98692707 0.14429418 -0.071792364 5.0124577
-  position -0.49477332 2.1276693 0.55300122
+  orientation 0.986927 0.144294 -0.0717924 5.01246
+  position -0.53608 2.33349 0.618829
 }
 RectangleArena {
   translation 0 -5e-05 0
@@ -23,8 +23,8 @@ DEF ROBOT E-puck {
     E-puckGroundSensors {
     }
     DEF PEN_L Pen {
-      translation 2.1932798e-09 -0.0039999999 0.07
-      rotation -0.57735027 0.57735027 0.57735027 2.0943951
+      translation 2.19328e-09 -0.004 0.07
+      rotation -0.57735 0.57735 0.57735 2.0944
       name "pen_l"
       inkColor 0 0.7 0
       inkDensity 1
@@ -62,7 +62,7 @@ Solid {
   }
 }
 Solid {
-  translation 1.0408341e-17 0.05 -0.62
+  translation 1.04083e-17 0.05 -0.62
   children [
     Shape {
       appearance Appearance {
@@ -77,7 +77,7 @@ Solid {
   }
 }
 Solid {
-  translation 1.0408341e-17 0.05 0.62
+  translation 1.04083e-17 0.05 0.62
   children [
     Shape {
       appearance Appearance {

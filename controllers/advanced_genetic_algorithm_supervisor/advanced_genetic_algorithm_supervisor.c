@@ -23,7 +23,12 @@ static const int NUM_WHEELS  = 3;
 static const double EXPLORATION_BONUS = 20;
 static const double TIME_PENALTY = 0.5;
 static const double EXPLORATION_PENALTY = 20; 
-#define GENOTYPE_SIZE (NUM_SENSORS * NUM_WHEELS)
+#define NUMBER_OF_INPUTS 7
+#define INPUT_LAYER_NUMBER_OF_NEURONS 7
+#define HIDDEN_LAYER_NUMBER_OF_NEURONS 7
+#define OUTPUT_LAYER_NUMBER_OF_NEURONS 2
+
+#define GENOTYPE_SIZE ((NUMBER_OF_INPUTS + 1) * INPUT_LAYER_NUMBER_OF_NEURONS + (INPUT_LAYER_NUMBER_OF_NEURONS + 1) * HIDDEN_LAYER_NUMBER_OF_NEURONS + (HIDDEN_LAYER_NUMBER_OF_NEURONS * HIDDEN_LAYER_NUMBER_OF_NEURONS) + (HIDDEN_LAYER_NUMBER_OF_NEURONS + 1) * OUTPUT_LAYER_NUMBER_OF_NEURONS)
 #define FRONT_FACING 0
 #define LEFT_FACING 1.5708
 #define RIGHT_FACING 4.71239
@@ -99,7 +104,6 @@ bool in_range_of(double value, double target, double range) {
 void check_exploration(void * is_finished) {
   const double *location = wb_supervisor_field_get_sf_vec3f(robot_translation);
   const double * rotation = wb_supervisor_field_get_sf_rotation(robot_rotation);
-  
  
   int index_x = 0;
   int index_z = 0;
@@ -131,19 +135,19 @@ void check_exploration(void * is_finished) {
   
   if(-1 <= z_round && z_round <= 1 && !walled_maze[index_x]) {
     if (in_range_of(rotation_norm,FRONT_FACING, 0.3) && index_x==0) { 
-   //   printf("Seen front wall\n");
+      printf("Seen front wall\n");
       walls[13]=true;
     }
     else if(in_range_of(rotation_norm, BACK_FACING, 0.3) && index_x==5) {
-    //  printf("Seen back wall\n");
+      printf("Seen back wall\n");
       walls[12]=true;
     }
     else if(in_range_of(rotation_norm, LEFT_FACING, 0.3)) {
-  //    printf("Seen left wall\n");
+      printf("Seen left wall\n");
       walls[2*index_x]=true;
     }
     else if(in_range_of(rotation_norm, RIGHT_FACING, 0.3)) {
-    //  printf("Seen right wall\n");
+      printf("Seen right wall\n");
       walls[2*index_x + 1] = true;
     }
   }
@@ -302,7 +306,7 @@ void run_demo() {
 }
 
 int main(int argc, const char *argv[]) {
-
+  printf("Genotype size in supervisor: %i\n", GENOTYPE_SIZE);
   // initialize Webots
   wb_robot_init();
   
