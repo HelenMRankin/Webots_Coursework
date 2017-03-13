@@ -11,9 +11,9 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-static const int POPULATION_SIZE = 10;
-static const int NUM_GENERATIONS = 3;
-
+static const int POPULATION_SIZE = 50;
+static const int NUM_GENERATIONS = 2;
+static bool walls[14];
 static bool walled_maze[12];
 static bool unwalled_maze[12];
 
@@ -24,7 +24,11 @@ static const double EXPLORATION_BONUS = 20;
 static const double TIME_PENALTY = 0.5;
 static const double EXPLORATION_PENALTY = 20; 
 #define GENOTYPE_SIZE (NUM_SENSORS * NUM_WHEELS)
-
+#define FRONT_FACING 0
+#define LEFT_FACING 1.5708
+#define RIGHT_FACING 4.71239
+#define BACK_FACING 3.1415
+#define TWO_PI 6.283818
 // index access
 enum { X, Y, Z };
 
@@ -57,6 +61,14 @@ void draw_scaled_line(int generation, double y1, double y2) {
     (generation + 0.5) * XSCALE, display_height - y2 * YSCALE);
 }
 
+double normalise(double radians) {
+  double rotation_norm = fmod(radians,TWO_PI);
+  if(rotation_norm<0) {
+    rotation_norm+=TWO_PI;
+  }
+  return rotation_norm;
+}
+
 // plot best and average fitness
 void plot_fitness(int generation, double best_fitness, double average_fitness) {
   static double prev_best_fitness = 0.0;
@@ -73,23 +85,33 @@ void plot_fitness(int generation, double best_fitness, double average_fitness) {
   prev_average_fitness = average_fitness;
 }
 
+bool in_range_of(double value, double target, double range) {
+  double upper = normalise(target+range);
+  double lower = normalise(target-range);
+  if(lower + range >= TWO_PI) {
+ //   printf("checking if %f is between %f or %f and %f\n", value, lower, -range, upper);
+    return (lower <=value||-range<=value)&&upper>=value;
+  }
+//  printf("Checking if %f is between %f and %f\n", value, lower, upper);
+  return(lower<=value && upper>=value);
+}
+
 void check_exploration(void * is_finished) {
   const double *location = wb_supervisor_field_get_sf_vec3f(robot_translation);
+  const double * rotation = wb_supervisor_field_get_sf_rotation(robot_rotation);
+  
+ 
   int index_x = 0;
   int index_z = 0;
   
-  double x = location[2] * 10;
+  double x = location[2] * 10 ;
   double z = location[0] * 10;
   
   double z_round;
   
-  if(x<0) {
-    index_x = floor(x);
-  } else {
-    index_x = ceil(x);
-  }
+  index_x=floor(x);
    
-  
+ // printf("Index_x: %d\n", index_x);
   if(z<0) {
     index_z = floor(z);
     z_round=index_z;
@@ -100,19 +122,38 @@ void check_exploration(void * is_finished) {
     index_z+=4;
   }
   
-  x+=6;
-  
+  index_x += 6;
+  index_x /=2;
+//  printf("X: %f, index_x: %d\n", x, index_x);
+  // Normalise rotation
+  double rotation_norm = normalise(rotation[3]);
+ // printf("Rotation: %f (normalised to %f)\n", rotation[3], rotation_norm);
   
   if(-1 <= z_round && z_round <= 1 && !walled_maze[index_x]) {
-    walled_maze[index_x] = true;
+    if (in_range_of(rotation_norm,FRONT_FACING, 0.3) && index_x==0) { 
+   //   printf("Seen front wall\n");
+      walls[13]=true;
+    }
+    else if(in_range_of(rotation_norm, BACK_FACING, 0.3) && index_x==5) {
+    //  printf("Seen back wall\n");
+      walls[12]=true;
+    }
+    else if(in_range_of(rotation_norm, LEFT_FACING, 0.3)) {
+  //    printf("Seen left wall\n");
+      walls[2*index_x]=true;
+    }
+    else if(in_range_of(rotation_norm, RIGHT_FACING, 0.3)) {
+    //  printf("Seen right wall\n");
+      walls[2*index_x + 1] = true;
+    }
   }
   else if(!walled_maze[index_z]){
     unwalled_maze[index_z] = true;
   }
   // Check if exploration is complete
   *((bool*) is_finished) = false;
-  for(int i = 0; i< 12; i++ ) {
-    *((bool*) is_finished) = *((bool*) is_finished) && walled_maze[i];
+  for(int i = 0; i< 14; i++ ) {
+    *((bool*) is_finished) = *((bool*) is_finished) && walls[i];
   }
 }
 
@@ -145,12 +186,8 @@ double run_seconds(double seconds) {
 void do_cleanup() {
   memset(walled_maze, false, sizeof(bool)* 12);
   memset(unwalled_maze, false, sizeof(bool)* 12);
-  
-  printf("Walled maze :");
-  for(int i = 0; i< 12; i++ ) {
-    printf("%s ", walled_maze[i]? "true" : "false");
-  }
-  printf("\n");
+  memset(walls, false, sizeof(bool) * 14);
+
 }
 
 // Fitness is calculated as 10 points per walled area explored, -1 point per second taken, 
@@ -160,11 +197,11 @@ double measure_fitness(double time) {
   int maze_explored_walled = 0;
   int maze_explored_unwalled = 0;
   
-  for(int i=0; i<12; i++) {
-    if(walled_maze[i]==true) {
+  for(int i=0; i<14; i++) {
+    if(walls[i]==true) {
       maze_explored_walled++;
     }
-    if(unwalled_maze[i]==true) {
+    if(i<12 && unwalled_maze[i]==true) {
       maze_explored_unwalled++;
     }
   }
@@ -271,7 +308,7 @@ int main(int argc, const char *argv[]) {
   
   memset(walled_maze, false, sizeof(bool));
   memset(unwalled_maze, false, sizeof(bool));
-
+  memset(walls, false, sizeof(bool));
   // get simulation step in milliseconds
   time_step = wb_robot_get_basic_time_step();
 
@@ -286,11 +323,12 @@ int main(int argc, const char *argv[]) {
 
   // initial population
   population = population_create(POPULATION_SIZE, GENOTYPE_SIZE);
-  read_best_population(population);
+ // read_best_population(population);
   // find robot node and store initial position and orientation
   WbNodeRef robot = wb_supervisor_node_get_from_def("ROBOT");
   robot_translation = wb_supervisor_node_get_field(robot, "translation");
   robot_rotation = wb_supervisor_node_get_field(robot, "rotation");
+
   memcpy(robot_trans0, wb_supervisor_field_get_sf_vec3f(robot_translation), sizeof(robot_trans0));
   memcpy(robot_rot0, wb_supervisor_field_get_sf_rotation(robot_rotation), sizeof(robot_rot0));
 

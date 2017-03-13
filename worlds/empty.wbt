@@ -3,11 +3,11 @@ DEF WORLD WorldInfo {
   inkEvaporation 0.5
 }
 Viewpoint {
-  orientation 0.98674908 0.022698621 -0.16065809 5.0176281
-  position -0.17247211 0.71921249 0.76783699
+  orientation 0.98692707 0.14429418 -0.071792364 5.0124577
+  position -0.49477332 2.1276693 0.55300122
 }
 RectangleArena {
-  translation 0 -5e-5 0
+  translation 0 -5e-05 0
   floorSize 1.4 1.4
 }
 Background {
@@ -23,7 +23,7 @@ DEF ROBOT E-puck {
     E-puckGroundSensors {
     }
     DEF PEN_L Pen {
-      translation 2.1932798e-9 -0.0039999999 0.07
+      translation 2.1932798e-09 -0.0039999999 0.07
       rotation -0.57735027 0.57735027 0.57735027 2.0943951
       name "pen_l"
       inkColor 0 0.7 0
