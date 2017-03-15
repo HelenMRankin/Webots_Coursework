@@ -6,6 +6,34 @@
 
 static const char *BEST_GENOTYPE_FILE = "best_genotype.txt";
 static const char *BEST_POPULATION_FILE = "best_population.txt";
+static const char *NEXT_POPULATION_FILE = "next_population.txt";
+
+void write_next_population(Population p) {
+  FILE *infile = fopen(NEXT_POPULATION_FILE, "w");
+  if (! infile && p) {
+    printf("unable to read %s\n", NEXT_POPULATION_FILE);
+    return;
+  }
+  printf("Writing next population\n");
+  
+  write_population(p, infile);
+  
+  fflush(infile);
+  fclose(infile);
+}
+
+void read_next_population(Population p) {
+  FILE *infile = fopen(NEXT_POPULATION_FILE, "r");
+  if (! infile) {
+    printf("unable to read %s\n", NEXT_POPULATION_FILE);
+    return;
+  }
+  
+  read_population(p, infile);
+  
+  fflush(infile);
+  fclose(infile);
+}
 
 void read_best_population(Population p) {
   FILE *infile = fopen(BEST_POPULATION_FILE, "r");
@@ -22,7 +50,7 @@ void read_best_population(Population p) {
 
 void write_best_population(Population p) {
   FILE *infile = fopen(BEST_POPULATION_FILE, "w");
-  if (! infile) {
+  if (! infile && p) {
     printf("unable to read %s\n", BEST_POPULATION_FILE);
     return;
   }
@@ -47,7 +75,7 @@ void read_best_genotype(Genotype g) {
 
 void write_best_genotype(Genotype g) {
   FILE *outfile = fopen(BEST_GENOTYPE_FILE, "w");
-  if (outfile) {
+  if (outfile&&g) {
     genotype_fwrite(g, outfile);
     fflush(outfile);
     fclose(outfile);

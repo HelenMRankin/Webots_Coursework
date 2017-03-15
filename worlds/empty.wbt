@@ -1,13 +1,12 @@
-#VRML_SIM V8.4.0 utf8
+#VRML_SIM V8.5 utf8
 DEF WORLD WorldInfo {
-  inkEvaporation 0.5
 }
 Viewpoint {
-  orientation 0.986927 0.144294 -0.0717924 5.01246
+  orientation 0.98692709 0.14429401 -0.071792407 5.01246
   position -0.53608 2.33349 0.618829
 }
 RectangleArena {
-  translation 0 -5e-05 0
+  translation 0 -5e-5 0
   floorSize 1.4 1.4
 }
 Background {
@@ -21,15 +20,6 @@ DEF ROBOT E-puck {
   emitter_channel 2
   groundSensorsSlot [
     E-puckGroundSensors {
-    }
-    DEF PEN_L Pen {
-      translation 2.19328e-09 -0.004 0.07
-      rotation -0.57735 0.57735 0.57735 2.0944
-      name "pen_l"
-      inkColor 0 0.7 0
-      inkDensity 1
-      leadSize 0.08
-      maxDistance 0.001
     }
   ]
 }
@@ -100,6 +90,12 @@ DEF FLOOR_WALLED Solid {
           diffuseColor 0.7 0.7 0.7
         }
         texture ImageTexture {
+          url [
+            "textures/grid.png"
+          ]
+        }
+        textureTransform TextureTransform {
+          scale 0.5 5
         }
       }
       geometry Box {
@@ -117,6 +113,7 @@ DEF FLOOR_EXP Solid {
     Shape {
       appearance Appearance {
         material Material {
+          diffuseColor 0.8 0 0
         }
         texture ImageTexture {
         }
@@ -136,6 +133,7 @@ DEF FLOOR_EXP Solid {
     Shape {
       appearance Appearance {
         material Material {
+          diffuseColor 0.8 0 0
         }
         texture ImageTexture {
         }

@@ -11,24 +11,29 @@
 #include <string.h>
 #include <math.h>
 #include <stdio.h>
-static const int POPULATION_SIZE = 50;
+static const int POPULATION_SIZE = 30;
 static const int NUM_GENERATIONS = 2;
 static bool walls[14];
-static bool walled_maze[12];
+static bool walled_maze[6];
 static bool unwalled_maze[12];
 
 // must match the values in the advanced_genetic_algorithm.c code
 static const int NUM_SENSORS = 7;
 static const int NUM_WHEELS  = 3;
+
+// Bonus for going forward
 static const double EXPLORATION_BONUS = 20;
-static const double TIME_PENALTY = 0.5;
+
+// Bonus for looking at wall 
+static const double INVESTIGATION_BONUS = 5;
+static const double TIME_PENALTY = 0.0;
 static const double EXPLORATION_PENALTY = 20; 
 #define NUMBER_OF_INPUTS 7
-#define INPUT_LAYER_NUMBER_OF_NEURONS 7
-#define HIDDEN_LAYER_NUMBER_OF_NEURONS 7
+#define INPUT_LAYER_NUMBER_OF_NEURONS 2
+#define HIDDEN_LAYER_NUMBER_OF_NEURONS 2
 #define OUTPUT_LAYER_NUMBER_OF_NEURONS 2
 
-#define GENOTYPE_SIZE ((NUMBER_OF_INPUTS + 1) * INPUT_LAYER_NUMBER_OF_NEURONS + (INPUT_LAYER_NUMBER_OF_NEURONS + 1) * HIDDEN_LAYER_NUMBER_OF_NEURONS + (HIDDEN_LAYER_NUMBER_OF_NEURONS * HIDDEN_LAYER_NUMBER_OF_NEURONS) + (HIDDEN_LAYER_NUMBER_OF_NEURONS + 1) * OUTPUT_LAYER_NUMBER_OF_NEURONS)
+#define GENOTYPE_SIZE (NUMBER_OF_INPUTS * INPUT_LAYER_NUMBER_OF_NEURONS  + INPUT_LAYER_NUMBER_OF_NEURONS * HIDDEN_LAYER_NUMBER_OF_NEURONS + HIDDEN_LAYER_NUMBER_OF_NEURONS * OUTPUT_LAYER_NUMBER_OF_NEURONS )
 #define FRONT_FACING 0
 #define LEFT_FACING 1.5708
 #define RIGHT_FACING 4.71239
@@ -133,7 +138,8 @@ void check_exploration(void * is_finished) {
   double rotation_norm = normalise(rotation[3]);
  // printf("Rotation: %f (normalised to %f)\n", rotation[3], rotation_norm);
   
-  if(-1 <= z_round && z_round <= 1 && !walled_maze[index_x]) {
+  if(-1 <= z_round && z_round <= 1 ) {
+    walled_maze[index_x] = true;
     if (in_range_of(rotation_norm,FRONT_FACING, 0.3) && index_x==0) { 
       printf("Seen front wall\n");
       walls[13]=true;
@@ -151,7 +157,7 @@ void check_exploration(void * is_finished) {
       walls[2*index_x + 1] = true;
     }
   }
-  else if(!walled_maze[index_z]){
+  else {
     unwalled_maze[index_z] = true;
   }
   // Check if exploration is complete
@@ -188,34 +194,38 @@ double run_seconds(double seconds) {
 }
 
 void do_cleanup() {
-  memset(walled_maze, false, sizeof(bool)* 12);
+  memset(walled_maze, false, sizeof(bool)* 6);
   memset(unwalled_maze, false, sizeof(bool)* 12);
   memset(walls, false, sizeof(bool) * 14);
-
 }
 
 // Fitness is calculated as 10 points per walled area explored, -1 point per second taken, 
 double measure_fitness(double time) {
   double score = 0;
   
-  int maze_explored_walled = 0;
+  int maze_walls_investigated = 0;
+  int maze_area_explored = 0;
   int maze_explored_unwalled = 0;
   
   for(int i=0; i<14; i++) {
     if(walls[i]==true) {
-      maze_explored_walled++;
+      maze_walls_investigated++;
     }
     if(i<12 && unwalled_maze[i]==true) {
       maze_explored_unwalled++;
     }
+    if(i<6 && walled_maze[i] ==true) {
+      maze_area_explored++;
+    }
   }
   
-  score = maze_explored_walled * EXPLORATION_BONUS
+  score = maze_walls_investigated * EXPLORATION_BONUS
+        + maze_area_explored * INVESTIGATION_BONUS
         - time * TIME_PENALTY
         - maze_explored_unwalled * EXPLORATION_PENALTY;
         
-  printf("Explored %i Walled and %i Unwalled areas in %g seconds. Score: %g\n", 
-        maze_explored_walled, maze_explored_unwalled, time, score);
+  printf("Area: %i, Walls: %i, Unwalled: %i, Time: %g, Score: %g\n", 
+        maze_area_explored,maze_walls_investigated,  maze_explored_unwalled, time, score);
   do_cleanup();
   return score;
 }
@@ -235,11 +245,6 @@ void evaluate_genotype(Genotype genotype) {
   // measure fitness
   double fitness = measure_fitness(time_taken);
   genotype_set_fitness(genotype, fitness);
-  
-  //printf("Clearing pen\n");
-  //wb_supervisor_field_set_sf_float(pen_evaporation, 30);
- // run_seconds(10.0);
-  
 
   printf("fitness: %g\n", fitness);
 }
@@ -277,8 +282,10 @@ void run_optimization() {
     }
       
     // reproduce (but not after the last generation)
-    if (i < NUM_GENERATIONS - 1)
+    if (i < NUM_GENERATIONS - 1)  {
       population_reproduce(population);
+      write_next_population(population);
+     }
   }
 
   printf("GA optimization terminated.\n");
@@ -327,7 +334,7 @@ int main(int argc, const char *argv[]) {
 
   // initial population
   population = population_create(POPULATION_SIZE, GENOTYPE_SIZE);
- // read_best_population(population);
+  read_next_population(population);
   // find robot node and store initial position and orientation
   WbNodeRef robot = wb_supervisor_node_get_from_def("ROBOT");
   robot_translation = wb_supervisor_node_get_field(robot, "translation");

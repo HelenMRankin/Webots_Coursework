@@ -22,31 +22,28 @@
 #define GS "gs1"
 
 #define NUM_SENSORS 7
+#define NUM_SENSORS 7
 // set neuron numbers and inputs here
 #define NUMBER_OF_INPUTS 7
-#define INPUT_LAYER_NUMBER_OF_NEURONS 7
-#define HIDDEN_LAYER_NUMBER_OF_NEURONS 7
+#define INPUT_LAYER_NUMBER_OF_NEURONS 2
+#define HIDDEN_LAYER_NUMBER_OF_NEURONS 2
 #define OUTPUT_LAYER_NUMBER_OF_NEURONS 2
 
-#define MAX_SPEED 1000
+#define MAX_SPEED 500
 int inputs[NUMBER_OF_INPUTS];
 double recurrent_inputs[HIDDEN_LAYER_NUMBER_OF_NEURONS];
 
-#define GENOTYPE_SIZE ((NUMBER_OF_INPUTS + 1) * INPUT_LAYER_NUMBER_OF_NEURONS + (INPUT_LAYER_NUMBER_OF_NEURONS + 1) * HIDDEN_LAYER_NUMBER_OF_NEURONS + (HIDDEN_LAYER_NUMBER_OF_NEURONS * HIDDEN_LAYER_NUMBER_OF_NEURONS) + (HIDDEN_LAYER_NUMBER_OF_NEURONS + 1) * OUTPUT_LAYER_NUMBER_OF_NEURONS)
+#define GENOTYPE_SIZE (NUMBER_OF_INPUTS * INPUT_LAYER_NUMBER_OF_NEURONS  + INPUT_LAYER_NUMBER_OF_NEURONS * HIDDEN_LAYER_NUMBER_OF_NEURONS + HIDDEN_LAYER_NUMBER_OF_NEURONS * OUTPUT_LAYER_NUMBER_OF_NEURONS )
+
 double genes[GENOTYPE_SIZE];
 WbDeviceTag sensors[NUM_SENSORS];  // proximity sensors
 WbDeviceTag receiver;              // for receiving genes from Supervisor
 
-#define DEBUG_NN
-#define DEBUG_GENES
-int random_get_integer(int max) {
-  return rand() % max;
-}
 
-double random_get_uniform() {
-
-  return (double)(random_get_integer(60000)-30000)/(double)10000;
-}
+// Debug assistance
+//#define DEBUG_NN
+//#define DEBUG_NN_DETAIL
+//#define DEBUG_WHEEL_SPEEDS
 
 // check if a new set of genes was sent by the Supervisor
 // in this case start using these new genes immediately
@@ -61,19 +58,14 @@ void check_for_new_genes() {
     }
   }
   
+  memset(recurrent_inputs, 0, HIDDEN_LAYER_NUMBER_OF_NEURONS);
+  
   // prepare for receiving next genes packet
   wb_receiver_next_packet(receiver); 
 }
 
-// sguash the ANN output between -1 and 1.
-double hyperbolic_tangent(double value) {
-  printf("Tangent: %f\n", value);
-  return (1.0f - exp(- 2.0f * value)) / (1.0f + exp(-2.0f * value));
-}
-
 // Calculate the output based on weights evolved by GA.
 double* evolve_neural_net() {
- 
   int i,j;
   static double input_layer_outputs[INPUT_LAYER_NUMBER_OF_NEURONS],
   hidden_layer_outputs[HIDDEN_LAYER_NUMBER_OF_NEURONS], 
@@ -89,55 +81,66 @@ double* evolve_neural_net() {
   printf("PROCESS INPUT LAYER \n");
   #endif
   
+  int gene_index = 0;
   // Input layer.
   for (i = 0; i < INPUT_LAYER_NUMBER_OF_NEURONS; ++i) {
     
     double output = 0.0f;
-    for (j = 0; j < NUMBER_OF_INPUTS + 1; ++j) {
-      int gene_index = NUMBER_OF_INPUTS * i + i + j;
-      double input_value = 1;
+    for (j = 0; j < NUMBER_OF_INPUTS; ++j) {
+      double input_value = inputs[j];
       
-      if (j > 0) {
-        input_value = inputs[j-1];
-      }
-      
-      output += genes[NUMBER_OF_INPUTS * i + i + j] * input_value;
-      printf("Gene: [%d], Neuron in: [%d], Neuron out: [%d], weight: %f, value: %f \n", gene_index, j-1, i, genes[gene_index], input_value );
+      output += genes[gene_index] * input_value;
+      #ifdef DEBUG_NN_DETAIL
+      printf("Gene: [%d], Neuron in: [%d], Neuron out: [%d], weight: %f, value: %f \n", gene_index, j, i, genes[gene_index], input_value );
+      #endif
+      gene_index++;
     }
-    
-    input_layer_outputs[i] = hyperbolic_tangent(output);
+    //printf("Output: %f\n", output);
+    input_layer_outputs[i] = tanh(output);
   }
-  //printf("input_layer_outputs[0]: %f\n", input_layer_outputs[0]);
-  //printf("input_layer_outputs[1]: %f\n", input_layer_outputs[1]);
+  
+  #ifdef DEBUG_NN
+  printf("input_layer_outputs[0]: %f\n", input_layer_outputs[0]);
+  printf("input_layer_outputs[1]: %f\n", input_layer_outputs[1]);
+  #endif
   
   // Hidden layer.
-  int  gene_offset = (NUMBER_OF_INPUTS + 1) * INPUT_LAYER_NUMBER_OF_NEURONS;
+  int  gene_offset = (NUMBER_OF_INPUTS ) * INPUT_LAYER_NUMBER_OF_NEURONS;
+  
+  #ifdef DEBUG_NN
+  printf("PROCESS HIDDEN LAYER (offset %i)\n", gene_offset);
+  #endif
+
   int hidden_layer_inputs = INPUT_LAYER_NUMBER_OF_NEURONS + HIDDEN_LAYER_NUMBER_OF_NEURONS;
   for (i = 0; i < HIDDEN_LAYER_NUMBER_OF_NEURONS; ++i) {
     
     double output = 0.0f;
-    for (j = 0 ; j < INPUT_LAYER_NUMBER_OF_NEURONS + 1; ++j) {
-      if (j == 0) {
-        output += genes[gene_offset + hidden_layer_inputs * i + i + j];
-   //     printf("gene: [%d]\n", gene_offset + (hidden_layer_inputs) * i + i + j);
-      }
-      else {
-     //   printf("gene: [%d]\n", gene_offset + hidden_layer_inputs * i + i + j);
-        output += genes[gene_offset + hidden_layer_inputs * i + i + j] * input_layer_outputs[j-1];
-      }        
+    for (j = 0 ; j < INPUT_LAYER_NUMBER_OF_NEURONS; ++j) {
+      output+= genes[gene_index] * input_layer_outputs[j];
+      #ifdef DEBUG_NN_DETAIL
+      printf("Gene: [%d], Neuron in: [%d], Neuron out: [%d], weight: %f, value: %f \n",gene_index, i,j,  genes[gene_index], input_layer_outputs[j] );
+      #endif
+      gene_index++;
     }
     
     // Elmar neural network implementation.
     int k;
-    for (k = j ; k < HIDDEN_LAYER_NUMBER_OF_NEURONS + j ; ++k) {
-      
-      printf("gene: [%d] (genotype_size: %i)\n", gene_offset + hidden_layer_inputs * i + i + k, GENOTYPE_SIZE);
-      output += genes[gene_offset + hidden_layer_inputs * i + i + k] * recurrent_inputs[k];      
+    for (k = j ; k < HIDDEN_LAYER_NUMBER_OF_NEURONS ; ++k) {
+      #ifdef DEBUG_NN_DETAIL
+      printf("(recurrent) gene: [%d] (genotype_size: %i)\n", gene_index, GENOTYPE_SIZE);
+      #endif
+ 
+      output += genes[gene_index] * recurrent_inputs[k];      
+      gene_index++;
     } 
-    hidden_layer_outputs[i] = hyperbolic_tangent(output);
+    hidden_layer_outputs[i] = tanh(output);
   }
-  //printf("hidden_layer_outputs[0]: %f\n", hidden_layer_outputs[0]);
-  //printf("hidden_layer_outputs[1]: %f\n", hidden_layer_outputs[1]);
+  
+  #ifdef DEBUG_NN
+  printf("hidden_layer_outputs[0]: %f\n", hidden_layer_outputs[0]);
+  printf("hidden_layer_outputs[1]: %f\n", hidden_layer_outputs[1]);
+  #endif
+
   
   // Save hidden layer outputs as recurrent inputs to be used next time.
   for (i = 0 ; i < HIDDEN_LAYER_NUMBER_OF_NEURONS ; ++i) {
@@ -151,18 +154,16 @@ double* evolve_neural_net() {
   for (i = 0; i < OUTPUT_LAYER_NUMBER_OF_NEURONS; ++i) {
     
     double output = 0.0f;
-    for (j = 0; j < HIDDEN_LAYER_NUMBER_OF_NEURONS + 1; ++j) {
-      if (j == 0) {
-        output += genes[gene_offset + HIDDEN_LAYER_NUMBER_OF_NEURONS * i + i + j];
-    //    printf("gene: [%d]\n", gene_offset + HIDDEN_LAYER_NUMBER_OF_NEURONS * i + i + j);
-      }
-      else {
-        output += genes[gene_offset + HIDDEN_LAYER_NUMBER_OF_NEURONS * i + i + j] * hidden_layer_outputs[j-1];
-     //   printf("gene: [%d]\n", gene_offset + HIDDEN_LAYER_NUMBER_OF_NEURONS * i + i + j);
-      }        
+    for (j = 0; j < HIDDEN_LAYER_NUMBER_OF_NEURONS; ++j) {
+      #ifdef DEBUG_NN_DETAIL
+      printf("Gene[%i], weight %f, value %f\n", gene_index, genes[gene_index], hidden_layer_outputs[j]);
+      #endif
+      
+      output+=genes[gene_index] * hidden_layer_outputs[j];
+      gene_index++;
     }
     
-    output_layer_outputs[i] = hyperbolic_tangent(output);
+    output_layer_outputs[i] = tanh(output);
   }
   return output_layer_outputs;
 }
@@ -171,9 +172,24 @@ double* evolve_neural_net() {
 void init_recurrent_inputs() {
   int i;
   for (i = 0; i < HIDDEN_LAYER_NUMBER_OF_NEURONS; ++i) {
-    recurrent_inputs[i] = random_get_uniform();
+    recurrent_inputs[i] =0;
     //printf("Recurrent input[%d]: %f\n", i, recurrent_inputs[i]); 
   }
+}
+
+double get_wheel_speed(double value) {
+  double speed = 0;
+  if (value>0) {
+    speed = MAX_SPEED;
+  }
+  else if(value<0) {
+    speed = -MAX_SPEED;
+  }
+  
+  #ifdef DEBUG_WHEEL_SPEEDS
+  printf("Wheel speed: %f -> %f\n", value, speed);
+  #endif
+  return speed;
 }
 
 // Get input, evolve NN and move based on output
@@ -187,9 +203,8 @@ void sense_compute_and_actuate() {
   
   double * wheel_speeds = evolve_neural_net();
   
-  printf("Wheel speeds: %f, %f\n", wheel_speeds[0]*MAX_SPEED, wheel_speeds[1]*MAX_SPEED);
   // actuate e-puck wheels
-  wb_differential_wheels_set_speed(wheel_speeds[0]*MAX_SPEED, wheel_speeds[1]*MAX_SPEED);
+  wb_differential_wheels_set_speed(get_wheel_speed( wheel_speeds[0]),get_wheel_speed(wheel_speeds[1]));
 }
 
 int main(int argc, const char *argv[]) {
@@ -212,7 +227,6 @@ printf("Genotype size in robot: %i\n", GENOTYPE_SIZE);
   // find and enable receiver
   receiver = wb_robot_get_device("receiver");
   wb_receiver_enable(receiver, time_step);
-  printf("test3\n");
   // run until simulation is restarted
   while (wb_robot_step(time_step) != -1) {
     check_for_new_genes();
